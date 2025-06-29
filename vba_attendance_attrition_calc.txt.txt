@@ -1,0 +1,154 @@
+'============================================================
+' VBA Project: Attendance Import + Attrition Rate Calculator
+' Description:
+'   - Automates import of monthly attendance file
+'   - Calculates absenteeism per employee
+'   - Classifies employees as Active or Resigned
+'   - Computes Attrition % and applies color-based alerts
+'
+' Author: Imran K.
+'============================================================
+
+'------------------------------------------------------------
+' Step 1: Select attendance file using file picker dialog
+'------------------------------------------------------------
+
+Sub AttenFileImport()
+
+Dim fd As FileDialog
+Dim FileSelectedBtn As Boolean
+Dim FilePath As String
+
+Set fd = Application.FileDialog(msoFileDialogFilePicker)
+
+fd.InitialFileName = Environ("userprofile") & "\desktop"
+fd.AllowMultiSelect = False
+
+FileSelectedBtn = fd.Show
+
+Debug.Print FileSelectedBtn
+
+If FileSelectedBtn = False Then
+    MsgBox "File not Selected"
+    Exit Sub
+End If
+
+FilePath = fd.SelectedItems(1)
+
+Call FileOpenCopy(FilePath)
+
+End Sub
+
+'------------------------------------------------------------
+' Step 2: Copy attendance dump into local sheet
+'------------------------------------------------------------
+
+Sub FileOpenCopy(AttendDump As String)
+
+Dim wbs As Workbook
+Dim wss As Worksheet
+Dim wbd As Workbook
+Dim wsd As Worksheet
+Dim AllSelect As Range
+Dim DestPath As String
+
+DestPath = Environ("userprofile") & "\Desktop\MyData\VBA\VBA Mini Proj\Attrition Report\Attendance Temp.xlsx"
+
+Set wbs = Workbooks.Open(AttendDump)
+Set wss = wbs.Sheets("sheet1")
+Set AllSelect = wss.Range("A1").CurrentRegion
+AllSelect.Copy
+
+Set wbd = Workbooks.Open(DestPath)
+Set wsd = wbd.Sheets("sheet1")
+wsd.Range("A1").PasteSpecial Paste:=xlPasteValuesAndNumberFormats
+
+wsd.Columns.AutoFit
+
+Application.CutCopyMode = False
+wbs.Close savechanges:=False
+wbd.Close savechanges:=True
+
+End Sub
+
+'------------------------------------------------------------
+' Step 3: Calculate absent days per employee
+'------------------------------------------------------------
+
+Sub Calculation()
+
+Dim wbc As Workbook
+Dim wsc As Worksheet
+Dim attid As Range
+Dim attsts, y As Range
+Dim DestPath As String
+Dim lrow As Long
+Dim x As Integer
+
+DestPath = Environ("userprofile") & "\Desktop\MyData\VBA\VBA Mini Proj\Attrition Report\Attendance Temp.xlsx"
+
+Set wbc = Workbooks.Open(DestPath)
+Set wsc = wbc.Sheets("sheet1")
+
+Set attid = wsc.Range("A2", wsc.Range("A2").End(xlDown))
+Set attsts = wsc.Range("C2", wsc.Range("C2").End(xlDown))
+
+lrow = ThisWorkbook.Sheets(1).Cells(Rows.Count, "A").End(xlUp).Row
+
+For x = 2 To lrow
+    Set y = ThisWorkbook.Sheets(1).Range("A" & x)
+
+    ThisWorkbook.Sheets(1).Range("F" & x).Value = _
+    Application.WorksheetFunction.CountIfs(attid, y, attsts, "Absent")
+Next x
+
+wbc.Close
+
+End Sub
+
+'------------------------------------------------------------
+' Step 4: Format output, flag absentees, calculate attrition
+'------------------------------------------------------------
+
+Sub formatting()
+
+Dim lrow, x As Long
+Dim ResignedC As Long
+Dim ActiveC As Long
+Dim AttC As Double
+
+lrow = ThisWorkbook.Sheets(1).Cells(Rows.Count, "A").End(xlUp).Row
+
+For x = 2 To lrow
+
+    If Range("E" & x).Value = "" Then
+        Range("G" & x).Value = "Active"
+    Else
+        Range("G" & x).Value = "Resigned"
+    End If
+
+    If Range("F" & x).Value > 2 Then
+        Range("F" & x).Cells.Interior.Color = vbRed
+    ElseIf Range("F" & x).Value <= 2 Then
+        Range("F" & x).Cells.Interior.Color = vbGreen
+    End If
+
+Next x
+
+Range("H2").Value = "Active"
+Range("I2").Value = "Resigned"
+Range("J2").Value = "Attrition%"
+
+ActiveC = Application.WorksheetFunction.CountIf( _
+    Range("G2", Range("G2").End(xlDown)), "Active")
+
+ResignedC = Application.WorksheetFunction.CountIf( _
+    Range("G2", Range("G2").End(xlDown)), "Resigned")
+
+AttC = Round((ResignedC / (ResignedC + ActiveC) * 100), 2)
+
+Range("H3").Value = ActiveC
+Range("I3").Value = ResignedC
+Range("J3").Value = AttC
+
+End Sub
