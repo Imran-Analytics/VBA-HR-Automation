@@ -1,0 +1,102 @@
+'============================================================
+' VBA Project: Salary Increment PDF Generator
+' Description:
+'   - Filters each employee's salary increment details
+'   - Copies relevant row into a template sheet
+'   - Exports each as individual PDF named by Emp ID
+'============================================================
+
+--------------------------------------------------------------------------------------------
+Step 1: Creating a Folder on desktop named "Sal_Details", all the PDFs will be saved here.
+--------------------------------------------------------------------------------------------
+
+Public folpath As String
+Sub SalDetails()
+
+	Dim fso As Scripting.FileSystemObject
+	Set fso = New Scripting.FileSystemObject
+	Dim fol As Scripting.Folder
+
+	  'Creating folder on desktoo
+	folpath = (Environ("userprofile") & "\desktop\Sal_Details")
+
+	  'Checking if folder already exist
+	If Not fso.FolderExists(folpath) Then
+	fso.CreateFolder (folpath)
+	
+	  'Success Massage
+	MsgBox "Folder Created at " & Now
+
+	  'if folder already exist
+	Else
+	Set fol = fso.GetFolder(folpath)
+	MsgBox "Folder " & fol.Name & " already exists"
+
+	End If
+
+	   'passing the folder path to macro to save the PDFs 
+	  Call calc_pdf
+
+End Sub
+
+------------------------------------------------------------------------------------------------------
+Step 2: Creating the folder for each Employee with salary details and saving in the pre-defined folder
+------------------------------------------------------------------------------------------------------
+
+
+
+Sub calc_pdf()
+
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim ws1 As Worksheet
+    Dim npay As Integer
+    Dim lrow As Integer
+    Dim fil As Range
+    Dim f As String
+
+    Set wb = ThisWorkbook
+    Set ws = wb.Sheets("Salary")
+    Set ws1 = wb.Sheets("TemSh") ' Template sheet
+
+    lrow = ws.Cells(Rows.Count, 1).End(xlUp).Row
+
+    For npay = 2 To lrow
+
+        ' Clear old data in the template
+        ws1.Range("A8:F9").ClearContents
+
+        ' Calculate Net Pay
+        ws.Range("F" & npay).Value = _
+            ws.Range("C" & npay).Value + ws.Range("D" & npay).Value - ws.Range("E" & npay).Value
+
+        ' Filter data for current Emp ID
+        ws.Range("A1:F" & lrow).AutoFilter Field:=1, Criteria1:=ws.Range("A" & npay).Value
+
+        Set fil = ws.Range("A1:F" & lrow).SpecialCells(xlCellTypeVisible)
+        fil.Copy
+
+        ' Paste filtered data to template sheet
+        ws1.Range("A13").PasteSpecial xlPasteValuesAndNumberFormats
+        ws1.Range("G2").Value = "22/06/2025" ' Optional: Issue date
+
+        ' Add border to current data block
+        With ws1.Range("A13").CurrentRegion
+            .Borders.LineStyle = xlContinuous
+            .Borders.Weight = xlThin
+        End With
+
+        ws1.Columns.AutoFit
+        Application.CutCopyMode = False
+
+        ' Save as PDF using Emp ID
+        f = folpath & "\" & ws.Range("A" & npay).Value & ".pdf"
+        ws1.ExportAsFixedFormat Type:=xlTypePDF, Filename:=f
+
+        ' Remove filter
+        If ws.AutoFilterMode Then ws.AutoFilterMode = False
+
+    Next npay
+
+End Sub
+
