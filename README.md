@@ -41,7 +41,7 @@ This repository contains two Excel VBA automation tools designed to reduce manua
 ## Author
 **Imran K.**  
 Excel + VBA + SQL + Power BI  
-[LinkedIn](#www.linkedin.com/in/imran-khan-aa8b4718b) | [GitHub Profile](https://github.com/Imran-Analytics)
+[LinkedIn Profile](www.linkedin.com/in/imran-khan-aa8b4718b) | [GitHub Profile](https://github.com/Imran-Analytics)
 
 
 
